@@ -82,6 +82,7 @@ Items acknowledged and carried forward from previous milestone close:
 |------|------|--------|
 | 2026-07-06 | [260706-0u2] Review recovery.html for incorrect/misleading content | Fixed misleading `Core value — "done"` label → `definition of "done"`; verified rest of dashboard faithful to RECOVERY-LOG.md. 2 findings flagged for user (DIAG-01 pass status; dashboard/STATE divergence). |
 | 2026-07-06 | [260706-1q3] Make recovery.html required materials checkable + notes | "Required before proceeding" / "Optional" rows now have acquired-checkbox + notes field (localStorage-persisted, slug-keyed); live acquired counter; export includes materials. |
+| 2026-07-06 | [260706-2ny] Generate recovery.html from RECOVERY-LOG.md | New build-recovery-dashboard.mjs parses the log → replaces the DATA block only. RECOVERY-LOG.md is now single source of truth. Fixed 2 parse bugs (findings dash, escaped-pipe cell). Idempotent `--check`. Drift reconciled (materials 5/4/5 → 6/5/7, log wins). |
 
 ## Session Continuity
 
