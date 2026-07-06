@@ -81,6 +81,7 @@ Items acknowledged and carried forward from previous milestone close:
 | Date | Task | Result |
 |------|------|--------|
 | 2026-07-06 | [260706-0u2] Review recovery.html for incorrect/misleading content | Fixed misleading `Core value — "done"` label → `definition of "done"`; verified rest of dashboard faithful to RECOVERY-LOG.md. 2 findings flagged for user (DIAG-01 pass status; dashboard/STATE divergence). |
+| 2026-07-06 | [260706-1q3] Make recovery.html required materials checkable + notes | "Required before proceeding" / "Optional" rows now have acquired-checkbox + notes field (localStorage-persisted, slug-keyed); live acquired counter; export includes materials. |
 
 ## Session Continuity
 

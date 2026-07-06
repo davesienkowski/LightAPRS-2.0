@@ -183,6 +183,11 @@
   .mlist small{color:var(--muted);display:block}
   .dummy{border-left:3px solid var(--active)}
   .dummy .warnline{color:var(--fail);font-weight:600}
+  /* checkable material rows */
+  .mlist.mcheck li{align-items:flex-start}
+  .mtext{display:flex;flex-direction:column;min-width:0;flex:1}
+  .mat-note{margin-top:7px;max-width:280px;width:100%}
+  .mcard.req h3 .reqcount{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-left:8px;text-transform:none;letter-spacing:0}
 
   /* log timeline */
   .timeline{list-style:none;margin:0;padding:0;position:relative}
@@ -488,12 +493,25 @@ $("#reqTable tbody").innerHTML=DATA.requirements.map(([id,cap,ph,st])=>
 
 /* materials */
 const m=DATA.materials;
+const matSlug=(n)=>n.toLowerCase().replace(/<[^>]*>/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40);
 function mItems(arr){return arr.map(([n,d])=>`<li><span class="mk"></span><span>${n}<small>${d}</small></span></li>`).join("");}
+/* checkable rows: tick when acquired + free-text notes; both persist to localStorage */
+function mCheckItems(arr,prefix){return arr.map(([n,d])=>{
+  const id=prefix+"-"+matSlug(n);
+  const on=store.get("mat:"+id+":c")==="1";
+  const note=store.get("mat:"+id+":note")||"";
+  return `<li>
+    <span class="cbox" role="checkbox" tabindex="0" aria-checked="${on}" data-c="mat:${id}:c" aria-label="acquired: ${n}"></span>
+    <span class="mtext"><span>${n}<small>${d}</small></span>
+      <input class="meas-in mat-note" data-k="mat:${id}:note" value="${note.replace(/"/g,'&quot;')}" placeholder="notes / status (ordered, substitute, link…)" aria-label="notes for ${n}"></span>
+  </li>`;
+}).join("");}
+function reqCount(){const done=m.required.filter(([n])=>store.get("mat:req-"+matSlug(n)+":c")==="1").length;return `<span class="reqcount">${done}/${m.required.length} acquired</span>`;}
 $("#materials").innerHTML=`
   <div class="mcard have"><h3>On hand</h3><ul class="mlist">${mItems(m.have)}</ul></div>
-  <div class="mcard req"><h3>Required before proceeding</h3><ul class="mlist">${mItems(m.required)}</ul></div>
+  <div class="mcard req"><h3>Required before proceeding<span id="reqCount">${reqCount()}</span></h3><ul class="mlist mcheck">${mCheckItems(m.required,"req")}</ul></div>
   <div class="mcard dummy"><h3>DIY 50 Ω dummy load</h3><ul class="mlist">${m.dummy.map(x=>`<li><span class="mk"></span><span>${x}</span></li>`).join("")}</ul></div>
-  <div class="mcard"><h3>Optional / nice-to-have</h3><ul class="mlist">${mItems(m.optional)}</ul></div>`;
+  <div class="mcard"><h3>Optional / nice-to-have</h3><ul class="mlist mcheck">${mCheckItems(m.optional,"opt")}</ul></div>`;
 
 /* log + questions */
 $("#logList").innerHTML=DATA.log.map(([d,ph,t])=>`<li><span class="tl-date">${d}</span><span class="tl-phase">${ph}</span><div class="tl-text">${t}</div></li>`).join("");
@@ -507,7 +525,8 @@ document.addEventListener("click",e=>{
   const box=e.target.closest(".cbox");
   if(box){toggleBox(box);}
 });
-function toggleBox(box){const on=box.getAttribute("aria-checked")==="true";box.setAttribute("aria-checked",String(!on));store.set(box.dataset.c,!on?"1":"0");}
+function toggleBox(box){const on=box.getAttribute("aria-checked")==="true";box.setAttribute("aria-checked",String(!on));store.set(box.dataset.c,!on?"1":"0");
+  if(box.dataset.c.startsWith("mat:req-")){const rc=$("#reqCount");if(rc)rc.innerHTML=reqCount();}}
 document.addEventListener("keydown",e=>{if(e.target.classList&&e.target.classList.contains("cbox")&&(e.key===" "||e.key==="Enter")){e.preventDefault();toggleBox(e.target);}});
 document.addEventListener("input",e=>{if(e.target.classList.contains("meas-in"))store.set(e.target.dataset.k,e.target.value);});
 
@@ -543,6 +562,16 @@ $("#exportBtn").addEventListener("click",()=>{
     });
     if(lines.length){out.push(`Phase ${p.n} — ${p.name}`);out.push(...lines,"");}
   });
+  const matLines=[];
+  DATA.materials.required.forEach(([n])=>{
+    const id="req-"+matSlug(n);
+    const box=document.querySelector(`[data-c="mat:${id}:c"]`);
+    const note=document.querySelector(`[data-k="mat:${id}:note"]`);
+    const acq=box&&box.getAttribute("aria-checked")==="true";
+    const nv=note?note.value.trim():"";
+    if(acq||nv)matLines.push(`  [${acq?"x":" "}] ${n}${nv?" — "+nv:""}`);
+  });
+  if(matLines.length){out.push("Required materials",...matLines,"");}
   if(out.length<=2)out.push("(no readings recorded yet)");
   const text=out.join("\n");
   (navigator.clipboard?.writeText(text)||Promise.reject()).then(()=>toast("Readings copied — paste them to me and I'll commit them")).catch(()=>{
