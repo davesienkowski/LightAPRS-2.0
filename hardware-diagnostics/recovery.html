@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LightAPRS 2.0 Recovery — N8EPK</title>
+<style>
+  :root{
+    --bg:#eef1f5; --panel:#ffffff; --panel-2:#f6f8fb; --border:#d3dae4;
+    --text:#1b232e; --muted:#5c6a7a;
+    --accent:#a86414; --accent-line:#c98a2e;
+    --pass:#1f8a5b; --pass-bg:#dcf0e6;
+    --active:#a86414; --active-bg:#f6e8cf;
+    --fail:#c0392b; --fail-bg:#f7dcd8;
+    --idle:#6c7a8b; --idle-bg:#e5eaf0;
+    --shadow:0 1px 2px rgba(20,30,45,.06),0 8px 24px rgba(20,30,45,.06);
+    --font-sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"Cascadia Code","SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --r:7px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0e141b; --panel:#161e28; --panel-2:#1b2531; --border:#2a3644;
+      --text:#e6edf5; --muted:#93a1b3;
+      --accent:#f2a740; --accent-line:#c9861f;
+      --pass:#46c98a; --pass-bg:rgba(70,201,138,.15);
+      --active:#f2a740; --active-bg:rgba(242,167,64,.15);
+      --fail:#f2685e; --fail-bg:rgba(242,104,94,.15);
+      --idle:#8393a6; --idle-bg:rgba(131,147,166,.15);
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#eef1f5; --panel:#ffffff; --panel-2:#f6f8fb; --border:#d3dae4;
+    --text:#1b232e; --muted:#5c6a7a;
+    --accent:#a86414; --accent-line:#c98a2e;
+    --pass:#1f8a5b; --pass-bg:#dcf0e6; --active:#a86414; --active-bg:#f6e8cf;
+    --fail:#c0392b; --fail-bg:#f7dcd8; --idle:#6c7a8b; --idle-bg:#e5eaf0;
+    --shadow:0 1px 2px rgba(20,30,45,.06),0 8px 24px rgba(20,30,45,.06);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e141b; --panel:#161e28; --panel-2:#1b2531; --border:#2a3644;
+    --text:#e6edf5; --muted:#93a1b3;
+    --accent:#f2a740; --accent-line:#c9861f;
+    --pass:#46c98a; --pass-bg:rgba(70,201,138,.15); --active:#f2a740; --active-bg:rgba(242,167,64,.15);
+    --fail:#f2685e; --fail-bg:rgba(242,104,94,.15); --idle:#8393a6; --idle-bg:rgba(131,147,166,.15);
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:var(--font-sans);font-size:15px;line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:26px 22px 80px}
+  a{color:var(--accent)}
+  h1,h2,h3{text-wrap:balance;margin:0}
+  .mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+  .eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 8px}
+  .sec-label{font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+    display:flex;align-items:center;gap:12px;margin:38px 0 16px}
+  .sec-label::after{content:"";flex:1;height:1px;background:var(--border)}
+
+  /* header */
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+  .title{font-size:clamp(24px,4vw,34px);font-weight:680;letter-spacing:-.01em;line-height:1.05}
+  .subtitle{color:var(--muted);margin-top:10px;max-width:60ch}
+  .callsign{font-family:var(--font-mono);font-weight:600;color:var(--accent);
+    border:1px solid var(--accent-line);border-radius:4px;padding:1px 7px;font-size:.85em}
+  .tools{display:flex;gap:8px}
+  .btn{font-family:var(--font-mono);font-size:12px;letter-spacing:.03em;color:var(--text);
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--r);
+    padding:8px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+  .btn:hover{border-color:var(--accent-line);color:var(--accent)}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* summary strip */
+  .strip{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin-top:22px}
+  @media (max-width:720px){.strip{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
+  .pad{padding:16px 18px}
+  .meter-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+  .meter-num{font-family:var(--font-mono);font-size:26px;font-weight:600;letter-spacing:-.02em}
+  .meter-num small{font-size:14px;color:var(--muted);font-weight:400}
+  .bar{height:9px;border-radius:6px;background:var(--panel-2);overflow:hidden;display:flex;border:1px solid var(--border)}
+  .bar i{display:block;height:100%}
+  .bar .b-pass{background:var(--pass)} .bar .b-active{background:var(--active)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--muted);font-family:var(--font-mono)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .d-pass{background:var(--pass)} .d-active{background:var(--active)} .d-todo{background:var(--idle)} .d-fail{background:var(--fail)}
+  .corevalue{font-size:13.5px;line-height:1.5}
+  .corevalue b{color:var(--accent)}
+
+  /* safety */
+  .safety{margin-top:14px;border:1px solid var(--border);border-left:3px solid var(--fail);
+    background:var(--panel);border-radius:var(--r);padding:14px 18px;box-shadow:var(--shadow)}
+  .safety h3{font-size:12px;font-family:var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--fail);margin-bottom:10px;display:flex;gap:8px;align-items:center}
+  .safety ol{margin:0;padding-left:18px;display:grid;gap:6px;font-size:13.5px}
+  .safety b{color:var(--text)}
+
+  /* phase cards */
+  .phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .pcard{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:15px 16px;box-shadow:var(--shadow);
+    display:flex;flex-direction:column;gap:9px;text-decoration:none;color:inherit;position:relative;overflow:hidden}
+  .pcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--idle)}
+  .pcard.is-active::before{background:var(--active)}
+  .pcard.is-pass::before{background:var(--pass)}
+  .pcard:hover{border-color:var(--accent-line)}
+  .pcard .pnum{font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:.1em}
+  .pcard .pname{font-weight:620;font-size:15.5px;line-height:1.2}
+  .pcard .pgoal{font-size:12.5px;color:var(--muted);line-height:1.45}
+  .pcard .pfoot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:4px}
+  .mini{font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+
+  /* status pill */
+  .pill{font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.04em;
+    padding:2px 8px;border-radius:100px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;border:1px solid transparent}
+  .pill::before{content:"";width:6px;height:6px;border-radius:50%}
+  .p-pass{color:var(--pass);background:var(--pass-bg)} .p-pass::before{background:var(--pass)}
+  .p-active{color:var(--active);background:var(--active-bg)} .p-active::before{background:var(--active)}
+  .p-todo{color:var(--idle);background:var(--idle-bg)} .p-todo::before{background:var(--idle)}
+  .p-fail{color:var(--fail);background:var(--fail-bg)} .p-fail::before{background:var(--fail)}
+  .p-defer{color:var(--idle);background:var(--idle-bg)} .p-defer::before{background:var(--idle);box-shadow:inset 0 0 0 1px var(--idle)}
+
+  /* detail (collapsible) */
+  details.phase{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);margin-bottom:12px;box-shadow:var(--shadow);overflow:hidden}
+  details.phase>summary{list-style:none;cursor:pointer;padding:15px 18px;display:flex;align-items:center;gap:12px;user-select:none}
+  details.phase>summary::-webkit-details-marker{display:none}
+  .chev{transition:transform .18s ease;color:var(--muted);flex:none}
+  details[open] .chev{transform:rotate(90deg)}
+  .sum-name{font-weight:620;font-size:15.5px}
+  .sum-goal{color:var(--muted);font-size:12.5px;margin-left:auto;text-align:right;max-width:46%}
+  @media (max-width:640px){.sum-goal{display:none}}
+  .detail-body{padding:4px 18px 20px;border-top:1px solid var(--border)}
+  .block{margin-top:18px}
+  .block-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .block-h .bt{font-weight:600;font-size:13.5px}
+  .block-h .bsub{font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+  ul.findings{margin:0;padding-left:2px;list-style:none;display:grid;gap:7px;font-size:13.5px}
+  ul.findings li{display:flex;gap:9px;align-items:baseline}
+  ul.findings .tag{font-size:9px;flex:none;margin-top:3px}
+  .tag-red{color:var(--fail)} .tag-amber{color:var(--active)} .tag-green{color:var(--pass)} .tag-todo{color:var(--idle)}
+
+  /* tables */
+  .tw{overflow-x:auto;border:1px solid var(--border);border-radius:var(--r)}
+  table{border-collapse:collapse;width:100%;font-size:13px;min-width:520px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--panel-2)}
+  tr:last-child td{border-bottom:none}
+  td.exp{color:var(--muted)}
+  .reqid{font-family:var(--font-mono);font-weight:600;color:var(--accent);font-size:12px}
+  .meas-in{font-family:var(--font-mono);font-size:12.5px;width:100%;min-width:90px;background:var(--panel-2);
+    color:var(--text);border:1px solid var(--border);border-radius:5px;padding:5px 8px}
+  .meas-in:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+  .meas-in::placeholder{color:var(--idle)}
+  .chip-btn{cursor:pointer;border:none;background:none;padding:0}
+  .chip-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:100px}
+
+  /* checklist */
+  ul.check{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+  ul.check li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px}
+  .cbox{width:17px;height:17px;border:1.5px solid var(--idle);border-radius:4px;flex:none;margin-top:2px;
+    cursor:pointer;display:inline-flex;align-items:center;justify-content:center;background:var(--panel-2)}
+  .cbox[aria-checked="true"]{background:var(--pass);border-color:var(--pass)}
+  .cbox[aria-checked="true"]::after{content:"✓";color:#fff;font-size:12px;font-weight:700}
+  .cbox:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .clabel .rid{font-family:var(--font-mono);font-weight:600;color:var(--accent);font-size:12px;margin-right:6px}
+  .fieldblock{font-family:var(--font-mono);font-size:12.5px;background:var(--panel-2);border:1px solid var(--border);
+    border-radius:var(--r);padding:12px 14px;white-space:pre-wrap;color:var(--muted);margin-top:6px}
+
+  /* materials */
+  .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:720px){.mgrid{grid-template-columns:1fr}}
+  .mcard{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:15px 17px;box-shadow:var(--shadow)}
+  .mcard h3{font-size:12px;font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;margin-bottom:11px;color:var(--muted)}
+  .mcard.req h3{color:var(--active)} .mcard.have h3{color:var(--pass)}
+  .mlist{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:13px}
+  .mlist li{display:flex;gap:9px;align-items:baseline}
+  .mlist .mk{flex:none;width:7px;height:7px;border-radius:50%;margin-top:5px;background:var(--idle)}
+  .have .mk{background:var(--pass)} .req .mk{background:var(--active)}
+  .mlist small{color:var(--muted);display:block}
+  .dummy{border-left:3px solid var(--active)}
+  .dummy .warnline{color:var(--fail);font-weight:600}
+
+  /* log timeline */
+  .timeline{list-style:none;margin:0;padding:0;position:relative}
+  .timeline li{position:relative;padding:0 0 16px 24px;border-left:1px solid var(--border);margin-left:6px}
+  .timeline li:last-child{border-left-color:transparent}
+  .timeline li::before{content:"";position:absolute;left:-5px;top:4px;width:9px;height:9px;border-radius:50%;background:var(--accent);border:2px solid var(--bg)}
+  .tl-date{font-family:var(--font-mono);font-size:11px;color:var(--accent);letter-spacing:.04em}
+  .tl-phase{font-family:var(--font-mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-left:8px}
+  .tl-text{font-size:13.5px;margin-top:3px}
+
+  .qlist{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+  .qlist li{display:flex;gap:10px;font-size:13.5px;align-items:baseline}
+  .qlist li::before{content:"?";font-family:var(--font-mono);color:var(--accent);font-weight:700;flex:none}
+
+  footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;font-family:var(--font-mono);display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+    background:var(--text);color:var(--bg);font-family:var(--font-mono);font-size:12.5px;
+    padding:10px 16px;border-radius:8px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.25s}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Field Recovery Log</p>
+      <h1 class="title">LightAPRS&nbsp;2.0 Recovery <span class="callsign">N8EPK</span></h1>
+      <p class="subtitle" id="subtitle"></p>
+    </div>
+    <div class="tools">
+      <button class="btn" id="exportBtn" type="button" title="Copy current readings to clipboard">⇪ Export readings</button>
+      <button class="btn" id="themeBtn" type="button" title="Toggle light / dark" aria-label="Toggle theme">◐</button>
+    </div>
+  </header>
+
+  <section class="strip">
+    <div class="card pad">
+      <div class="meter-head">
+        <div><div class="eyebrow" style="margin:0">Overall progress</div></div>
+        <div class="meter-num" id="progNum"></div>
+      </div>
+      <div class="bar" id="progBar" role="progressbar" aria-label="Requirements complete"></div>
+      <div class="legend">
+        <span><i class="dot d-pass"></i>pass</span>
+        <span><i class="dot d-active"></i>in&nbsp;progress</span>
+        <span><i class="dot d-todo"></i>to&nbsp;do</span>
+        <span><i class="dot d-fail"></i>fault</span>
+      </div>
+    </div>
+    <div class="card pad">
+      <div class="eyebrow" style="margin:0 0 10px">Core value — "done"</div>
+      <p class="corevalue" id="coreval"></p>
+    </div>
+  </section>
+
+  <div class="safety">
+    <h3>⚠ Safety gates — never skip</h3>
+    <ol id="safetyList"></ol>
+  </div>
+
+  <div class="sec-label">Phases</div>
+  <div class="phases" id="phaseCards"></div>
+
+  <div class="sec-label">Phase detail &amp; measurements</div>
+  <div id="phaseDetail"></div>
+
+  <div class="sec-label">Requirement tracker</div>
+  <div class="tw"><table id="reqTable">
+    <thead><tr><th>Req</th><th>Capability</th><th>Phase</th><th>Status</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+
+  <div class="sec-label">Materials &amp; shopping list</div>
+  <div class="mgrid" id="materials"></div>
+
+  <div class="sec-label">Running log</div>
+  <ul class="timeline" id="logList"></ul>
+
+  <div class="sec-label">Open questions</div>
+  <ul class="qlist" id="questions"></ul>
+
+  <footer>
+    <span>Source of truth: <b>hardware-diagnostics/RECOVERY-LOG.md</b> · rendered dashboard</span>
+    <span>Last updated <b id="updated"></b> · kept in sync by your assistant</span>
+  </footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const DATA = {
+  meta:{
+    subtitle:"A QRP-Labs LightAPRS 2.0 (ATSAMD21G18) left outdoors too long. Diagnose the damage, repair it, reflash, and prove it flies again — GPS fix + a decodable APRS packet on 2 m.",
+    coreValue:"The tracker <b>powers up</b>, acquires a <b>GPS fix</b>, and transmits a <b>decodable APRS packet</b>. If everything else is deferred, this must work.",
+    updated:"2026-07-05"
+  },
+  safety:[
+    "<b>Cold-check before power.</b> Measure rail-to-ground resistance with power OFF. Near 0 Ω = short → do not apply power.",
+    "<b>Never key the radio without a load.</b> The DRA818V PA dies in milliseconds with no antenna/dummy load. No 50 Ω load = no TX. (Wirewound resistors are invalid at 144 MHz.)",
+    "<b>Verify raw serial before blaming the antenna.</b> The known \"Sats: 0\" failure on this exact board was an L1 inductor + antenna mismatch, not the visible feed.",
+    "<b>Licensed TX only.</b> On-air 2 m transmit needs the amateur license (N8EPK — held). Dummy-load bench tests are fine regardless."
+  ],
+  phases:[
+    { n:1, name:"Diagnose — Inspection & Power Path", goal:"Damage mapped; power rails proven safe before any downstream test.", status:"active", reqIds:["DIAG-01","DIAG-02"], open:true,
+      blocks:[
+        { type:"findings", title:"DIAG-01 · Visual inspection", sub:"from 5 photos · back side pending", pill:"pass", items:[
+          {t:"red",x:"<b>GPS antenna feed</b> (Rainsun GPS1003 base, by L3): dark, grainy joint — oxidized flux and/or corrosion. <b>Primary suspect.</b>"},
+          {t:"amber",x:"Whitish <b>surface film</b> near USB + lower-left passives → clean with 99% IPA, re-inspect."},
+          {t:"amber",x:"Micro-USB shell <b>dulled/spotted</b> → watch for flaky enumeration in Phase 2."},
+          {t:"amber",x:"Supercaps wired OK, but <b>ESR may be degraded</b> if they were wetted → measure."},
+          {t:"green",x:"Wire terminations sound; no cracked parts, burns, or lifted pads visible."},
+          {t:"todo",x:"<b>Back side not yet photographed</b> — add to photos/ to extend inspection."}
+        ]},
+        { type:"measure", title:"DIAG-02A · Cold checks", sub:"power OFF · USB unplugged · caps discharged · meter on Ω", rows:[
+          {id:"vbat-gnd", label:"VBAT → GND resistance", exp:"High (kΩ+, may climb). ~0 Ω = short → STOP"},
+          {id:"3v3-gnd",  label:"3V3 → GND resistance",  exp:"High / climbing to kΩ+. ~0 Ω = short → STOP"},
+          {id:"gps-joint",label:"GPS feed joint (wiggle antenna)", exp:"Steady continuity; jumpy = cracked/corroded"}
+        ]},
+        { type:"measure", title:"DIAG-02B · Powered checks", sub:"ONLY if A shows no short · plug USB · meter on DC V", rows:[
+          {id:"3v3-volt", label:"3V3 → GND voltage", exp:"3.13–3.47 V (3.3 V ±5%)"},
+          {id:"hot",      label:"Any component hot to touch?", exp:"No — hot part = power off NOW"},
+          {id:"enum",     label:"USB enumerates? (COM port / lsusb)", exp:"Device appears (preview of Phase 2)"}
+        ]}
+      ]
+    },
+    { n:2, name:"MCU Bring-up & Reflash", goal:"SAMD21 boots; reproducible flash path; DEVMODE + self-test convention up.", status:"todo", reqIds:["FLASH-01","FLASH-02","FLASH-03","TOOL-01"],
+      blocks:[
+        { type:"check", items:[
+          {id:"flash01", rid:"FLASH-01", label:"SAMD21 enumerates over USB; bootloader reachable via <b>double-tap RESET</b>; app + bootloader VID:PID recorded."},
+          {id:"flash02", rid:"FLASH-02", label:"Compile in WSL; upload via <b>Windows-native arduino-cli.exe</b> (core 1.8.12, FQBN <span class='mono'>arduino:samd:mzero_bl</span>). Sidesteps the usbipd re-enumeration race."},
+          {id:"flash03", rid:"FLASH-03", label:"Enable <b>DEVMODE</b> (uncomment ~line 27); confirm per-subsystem serial prints."},
+          {id:"tool01",  rid:"TOOL-01",  label:"Establish <span class='mono'>SELFTEST:&lt;SUBSYSTEM&gt;:&lt;PASS|FAIL&gt;:&lt;key=value&gt;</span> serial convention."}
+        ]},
+        { type:"field", text:"app-mode  VID:PID = ________   port = ________\nboot-mode VID:PID = ________   port = ________\n(datasheet ref: app 0x2a03:0x804d  ·  boot 0x2a03:0x804e)" }
+      ]
+    },
+    { n:3, name:"Non-RF Peripherals — GPS & BMP180", goal:"GPS validated serial-first then to a fix; BMP180 reads.", status:"todo", reqIds:["GPS-01","GPS-02","SENS-01"],
+      blocks:[
+        { type:"check", items:[
+          {id:"sens01", rid:"SENS-01", label:"BMP180 returns valid temp/pressure over I2C (<span class='mono'>SELFTEST:BMP180:PASS</span>)."},
+          {id:"gps01",  rid:"GPS-01",  label:"MCU↔MAX-M8Q link streams raw NMEA/UBX (module alive) <b>before</b> touching the antenna. Confirm bus type (UART vs I2C)."},
+          {id:"gps02",  rid:"GPS-02",  label:"Acquire a fix (sats&gt;0, valid lat/lon) with clear sky. If bus good but no fix → rework feed / inspect L1, re-test."}
+        ]},
+        { type:"field", text:"GPS bus type = ______   raw NMEA seen? ______   sats = ____   fix = ____\nBMP180 temp = ______   pressure = ______" }
+      ]
+    },
+    { n:4, name:"RF Path & SDR End-to-End Validation", goal:"TX into a dummy load only; a real APRS packet decoded on the SDR. (Core Value)", status:"todo", reqIds:["RF-01","RF-02","TOOL-02","VALID-01"],
+      blocks:[
+        { type:"check", items:[
+          {id:"dummy", rid:"", label:"<b>Dummy load ready</b> (50 Ω, metal-film). <b class='mono' style='color:var(--fail)'>Do not TX without it.</b>"},
+          {id:"rf01",  rid:"RF-01",   label:"Si5351 clock output present <b>before</b> enabling the PA."},
+          {id:"rf02",  rid:"RF-02",   label:"DRA818V transmits a short burst at 144.390 MHz into the 50 Ω load; power confirmed."},
+          {id:"tool02",rid:"TOOL-02", label:"<span class='mono'>rtl_fm | direwolf</span> (v1.8.1) decoding 2 m APRS; validate against a known-good signal first."},
+          {id:"valid01",rid:"VALID-01",label:"End-to-end: fix + BMP180 data → transmit → <b>direwolf decodes the frame as N8EPK</b>. 🎉"}
+        ]},
+        { type:"field", text:"TX freq = ______   direwolf decoded? ______   callsign in frame = ______" }
+      ]
+    }
+  ],
+  requirements:[
+    ["DIAG-01","Whole-board visual inspection logged",1,"pass"],
+    ["DIAG-02","Power rails proven safe / correct",1,"active"],
+    ["FLASH-01","SAMD21 enumerates; bootloader reachable; VID:PIDs recorded",2,"todo"],
+    ["FLASH-02","Reproducible flash path (WSL compile / Windows upload)",2,"todo"],
+    ["FLASH-03","DEVMODE diagnostic firmware flashed",2,"todo"],
+    ["TOOL-01","SELFTEST: per-subsystem sketch convention",2,"todo"],
+    ["GPS-01","MCU↔MAX-M8Q bus streams raw NMEA/UBX",3,"todo"],
+    ["GPS-02","GPS acquires a fix; antenna reworked if needed",3,"todo"],
+    ["SENS-01","BMP180 valid temp/pressure over I2C",3,"todo"],
+    ["RF-01","Si5351 clock confirmed before PA enable",4,"todo"],
+    ["RF-02","DRA818V TX into 50 Ω dummy load at 2 m",4,"todo"],
+    ["TOOL-02","rtl_fm | direwolf SDR decode pipeline up",4,"todo"],
+    ["VALID-01","End-to-end: fix + sensor → TX → decoded as N8EPK",4,"todo"]
+  ],
+  materials:{
+    have:[
+      ["Digital multimeter","DIAG-02 continuity / resistance / voltage"],
+      ["Soldering iron","Joint rework, feed-joint repair"],
+      ["99% IPA + no-clean flux","Clean film / corrosion; rework feed joint"],
+      ["Through-hole R's & C's, wire","Probing, DIY dummy load, jumpers"],
+      ["NooElec RTL-SDR + antenna","Phase 4 APRS receive / decode"]
+    ],
+    required:[
+      ["Micro-USB (type-B) DATA cable","Data, not charge-only — blocks Phase 2 flashing"],
+      ["50 Ω dummy load","See recipe — hard gate on Phase 4 TX"],
+      ["Solder wick + fresh thin solder","Clean & rework the corroded feed joint"],
+      ["Magnification (10× loupe / USB scope)","Catch hairline cracks a beep misses"]
+    ],
+    dummy:[
+      "Target: ~50 Ω, non-inductive, ≥2 W, <b>short key-downs only</b>.",
+      "Recipe A: 2× <span class='mono'>100 Ω metal-film 2 W</span> in parallel = 50 Ω / 4 W.",
+      "Recipe B: series/parallel metal-film to hit ~50 Ω, spreading wattage.",
+      "<span class='warnline'>Metal-film or carbon-film only — NEVER wirewound</span> (inductive at 144 MHz).",
+      "Keep leads ultra-short; feed-point → ground. Confirm ~50 Ω on the meter first.",
+      "Or buy the QRP Labs 50 Ω / 20 W dummy-load kit (same maker)."
+    ],
+    optional:[
+      ["USB inline power/current meter","No bench PSU → watch inrush current safely on USB"],
+      ["Fiberglass scratch pen / brass brush","Mechanical corrosion removal (then re-coat)"],
+      ["Conformal coating","Re-weatherproof after repair (v2 / re-flight)"],
+      ["Hot-air station","Only if the MAX-M8Q LGA must be lifted (avoid)"],
+      ["2 m antenna + coax; known-good APRS ref","On-air test + sanity-check the decode chain"]
+    ]
+  },
+  log:[
+    ["2026-07-05","setup","Cloned & forked repos; arduino-cli + SAMD 1.8.12 build env verified (all 3 sketches compile). GSD project initialized (4-phase roadmap). Fixed WSL hook errors."],
+    ["2026-07-05","phase 1","DIAG-01 visual inspection from 5 photos — GPS feed corrosion is primary suspect; surface film + USB spotting secondary. Back side not yet photographed. DIAG-02 procedure prepared; awaiting bench readings."]
+  ],
+  questions:[
+    "Back-side photos of the board (extend DIAG-01).",
+    "MAX-M8Q bus wiring on this rev: UART or I2C? (both libs vendored — resolve in Phase 3.)",
+    "Which firmware variant to flash (hab / pico-balloon / vehicle) and its configured TX frequency.",
+    "Dummy load: build from metal-film resistors vs. buy QRP Labs 50 Ω / 20 W.",
+    "Does this rev expose SWD pads (hard-brick recovery insurance)?"
+  ]
+};
+
+const PILL={pass:["p-pass","PASS"],active:["p-active","IN PROGRESS"],todo:["p-todo","TO DO"],fail:["p-fail","FAULT"],defer:["p-defer","DEFERRED"]};
+const $=(s,r=document)=>r.querySelector(s);
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+function pill(status){const[c,l]=PILL[status]||PILL.todo;return `<span class="pill ${c}">${l}</span>`;}
+const store={
+  get:(k)=>{try{return localStorage.getItem("laprs:"+k)}catch(e){return null}},
+  set:(k,v)=>{try{localStorage.setItem("laprs:"+k,v)}catch(e){}}
+};
+
+/* header + summary */
+$("#subtitle").innerHTML=DATA.meta.subtitle;
+$("#coreval").innerHTML=DATA.meta.coreValue;
+$("#updated").textContent=DATA.meta.updated;
+(function(){
+  const reqs=DATA.requirements;
+  const pass=reqs.filter(r=>r[3]==="pass").length;
+  const active=reqs.filter(r=>r[3]==="active").length;
+  const total=reqs.length;
+  $("#progNum").innerHTML=`${pass}<small>/${total} reqs · ${active} active</small>`;
+  const bar=$("#progBar");
+  bar.setAttribute("aria-valuenow",pass);bar.setAttribute("aria-valuemin",0);bar.setAttribute("aria-valuemax",total);
+  bar.innerHTML=`<i class="b-pass" style="width:${pass/total*100}%"></i><i class="b-active" style="width:${active/total*100}%"></i>`;
+})();
+
+/* safety */
+$("#safetyList").innerHTML=DATA.safety.map(s=>`<li>${s}</li>`).join("");
+
+/* phase cards */
+$("#phaseCards").innerHTML=DATA.phases.map(p=>{
+  const done=p.reqIds.filter(id=>DATA.requirements.find(r=>r[0]===id)?.[3]==="pass").length;
+  const cls=p.status==="active"?"is-active":p.status==="pass"?"is-pass":"";
+  return `<a class="pcard ${cls}" href="#phase-${p.n}">
+    <span class="pnum">PHASE ${p.n}</span>
+    <span class="pname">${p.name}</span>
+    <span class="pgoal">${p.goal}</span>
+    <span class="pfoot">${pill(p.status)}<span class="mini">${done}/${p.reqIds.length} reqs</span></span>
+  </a>`;
+}).join("");
+
+/* phase detail */
+const chev=`<svg class="chev" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4l4 4-4 4"/></svg>`;
+function renderBlock(b){
+  if(b.type==="findings"){
+    return `<div class="block"><div class="block-h"><span class="bt">${b.title}</span> ${pill(b.pill)} <span class="bsub">${b.sub||""}</span></div>
+      <ul class="findings">${b.items.map(i=>`<li><span class="tag tag-${i.t}">●</span><span>${i.x}</span></li>`).join("")}</ul></div>`;
+  }
+  if(b.type==="measure"){
+    const rows=b.rows.map(r=>{
+      const mkey=r.id+":m", skey=r.id+":s";
+      const mval=store.get(mkey)||"";
+      const sval=store.get(skey)||"todo";
+      const[c,l]=PILL[sval]||PILL.todo;
+      return `<tr>
+        <td>${r.label}</td>
+        <td class="exp">${r.exp}</td>
+        <td><input class="meas-in" data-k="${mkey}" value="${mval.replace(/"/g,'&quot;')}" placeholder="record…" aria-label="measured ${r.label}"></td>
+        <td><button class="chip-btn" data-s="${skey}" type="button" title="click to cycle"><span class="pill ${c}">${l}</span></button></td>
+      </tr>`;
+    }).join("");
+    return `<div class="block"><div class="block-h"><span class="bt">${b.title}</span> <span class="bsub">${b.sub||""}</span></div>
+      <div class="tw"><table><thead><tr><th>Measurement</th><th>Expected</th><th>Measured</th><th>State</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  }
+  if(b.type==="check"){
+    return `<div class="block"><ul class="check">${b.items.map(i=>{
+      const on=store.get(i.id+":c")==="1";
+      return `<li><span class="cbox" role="checkbox" tabindex="0" aria-checked="${on}" data-c="${i.id}:c"></span>
+        <span class="clabel">${i.rid?`<span class="rid">${i.rid}</span>`:""}${i.label}</span></li>`;
+    }).join("")}</ul></div>`;
+  }
+  if(b.type==="field"){
+    return `<div class="block"><div class="fieldblock">${b.text}</div></div>`;
+  }
+  return "";
+}
+$("#phaseDetail").innerHTML=DATA.phases.map(p=>`
+  <details class="phase" id="phase-${p.n}" ${p.open?"open":""}>
+    <summary>${chev}<span class="sum-name">Phase ${p.n} · ${p.name}</span> ${pill(p.status)}<span class="sum-goal">${p.goal}</span></summary>
+    <div class="detail-body">${p.blocks.map(renderBlock).join("")}</div>
+  </details>`).join("");
+
+/* requirement table */
+$("#reqTable tbody").innerHTML=DATA.requirements.map(([id,cap,ph,st])=>
+  `<tr><td class="reqid">${id}</td><td>${cap}</td><td class="mono" style="color:var(--muted)">P${ph}</td><td>${pill(st)}</td></tr>`
+).join("");
+
+/* materials */
+const m=DATA.materials;
+function mItems(arr){return arr.map(([n,d])=>`<li><span class="mk"></span><span>${n}<small>${d}</small></span></li>`).join("");}
+$("#materials").innerHTML=`
+  <div class="mcard have"><h3>On hand</h3><ul class="mlist">${mItems(m.have)}</ul></div>
+  <div class="mcard req"><h3>Required before proceeding</h3><ul class="mlist">${mItems(m.required)}</ul></div>
+  <div class="mcard dummy"><h3>DIY 50 Ω dummy load</h3><ul class="mlist">${m.dummy.map(x=>`<li><span class="mk"></span><span>${x}</span></li>`).join("")}</ul></div>
+  <div class="mcard"><h3>Optional / nice-to-have</h3><ul class="mlist">${mItems(m.optional)}</ul></div>`;
+
+/* log + questions */
+$("#logList").innerHTML=DATA.log.map(([d,ph,t])=>`<li><span class="tl-date">${d}</span><span class="tl-phase">${ph}</span><div class="tl-text">${t}</div></li>`).join("");
+$("#questions").innerHTML=DATA.questions.map(q=>`<li><span>${q}</span></li>`).join("");
+
+/* interactions */
+const CYCLE=["todo","pass","fail"];
+document.addEventListener("click",e=>{
+  const chip=e.target.closest(".chip-btn");
+  if(chip){const k=chip.dataset.s;const cur=store.get(k)||"todo";const nx=CYCLE[(CYCLE.indexOf(cur)+1)%CYCLE.length];store.set(k,nx);const[c,l]=PILL[nx];chip.querySelector(".pill").className="pill "+c;chip.querySelector(".pill").textContent=l;}
+  const box=e.target.closest(".cbox");
+  if(box){toggleBox(box);}
+});
+function toggleBox(box){const on=box.getAttribute("aria-checked")==="true";box.setAttribute("aria-checked",String(!on));store.set(box.dataset.c,!on?"1":"0");}
+document.addEventListener("keydown",e=>{if(e.target.classList&&e.target.classList.contains("cbox")&&(e.key===" "||e.key==="Enter")){e.preventDefault();toggleBox(e.target);}});
+document.addEventListener("input",e=>{if(e.target.classList.contains("meas-in"))store.set(e.target.dataset.k,e.target.value);});
+
+/* theme */
+const themeBtn=$("#themeBtn");
+const savedT=store.get("theme");
+if(savedT)document.documentElement.setAttribute("data-theme",savedT);
+themeBtn.addEventListener("click",()=>{
+  const cur=document.documentElement.getAttribute("data-theme");
+  const isDark=cur?cur==="dark":matchMedia("(prefers-color-scheme:dark)").matches;
+  const nx=isDark?"light":"dark";
+  document.documentElement.setAttribute("data-theme",nx);store.set("theme",nx);
+});
+
+/* export */
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2600);}
+$("#exportBtn").addEventListener("click",()=>{
+  let out=["LightAPRS 2.0 recovery — readings ("+DATA.meta.updated+")",""];
+  DATA.phases.forEach(p=>{
+    let lines=[];
+    p.blocks.forEach(b=>{
+      if(b.type==="measure")b.rows.forEach(r=>{const mv=(store.get(r.id+":m")||"").trim();const sv=store.get(r.id+":s")||"todo";if(mv||sv!=="todo")lines.push(`  ${r.label}: ${mv||"—"} [${sv}]`);});
+      if(b.type==="check")b.items.forEach(i=>{if(store.get(i.id+":c")==="1")lines.push(`  [x] ${i.rid||i.id}`);});
+    });
+    if(lines.length){out.push(`Phase ${p.n} — ${p.name}`);out.push(...lines,"");}
+  });
+  if(out.length<=2)out.push("(no readings recorded yet)");
+  const text=out.join("\n");
+  (navigator.clipboard?.writeText(text)||Promise.reject()).then(()=>toast("Readings copied — paste them to me and I'll commit them")).catch(()=>{
+    const ta=el("textarea");ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");toast("Readings copied to clipboard");}catch(_){toast("Copy failed — select the console text manually");}ta.remove();
+  });
+});
+</script>
+</body>
+</html>
