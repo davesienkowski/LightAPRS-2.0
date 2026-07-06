@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -529,8 +529,17 @@ $("#exportBtn").addEventListener("click",()=>{
   DATA.phases.forEach(p=>{
     let lines=[];
     p.blocks.forEach(b=>{
-      if(b.type==="measure")b.rows.forEach(r=>{const mv=(store.get(r.id+":m")||"").trim();const sv=store.get(r.id+":s")||"todo";if(mv||sv!=="todo")lines.push(`  ${r.label}: ${mv||"—"} [${sv}]`);});
-      if(b.type==="check")b.items.forEach(i=>{if(store.get(i.id+":c")==="1")lines.push(`  [x] ${i.rid||i.id}`);});
+      if(b.type==="measure")b.rows.forEach(r=>{
+        const inp=document.querySelector(`[data-k="${r.id}:m"]`);
+        const chip=document.querySelector(`[data-s="${r.id}:s"] .pill`);
+        const mv=(inp?inp.value:"").trim();
+        const sv=chip?chip.textContent.trim():"";
+        if(mv||(sv&&sv!=="TO DO"))lines.push(`  ${r.label}: ${mv||"—"} [${sv||"—"}]`);
+      });
+      if(b.type==="check")b.items.forEach(i=>{
+        const box=document.querySelector(`[data-c="${i.id}:c"]`);
+        if(box&&box.getAttribute("aria-checked")==="true")lines.push(`  [x] ${i.rid||i.id}`);
+      });
     });
     if(lines.length){out.push(`Phase ${p.n} — ${p.name}`);out.push(...lines,"");}
   });
