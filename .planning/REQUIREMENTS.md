@@ -52,4 +52,16 @@ Derived from PROJECT.md Active requirements + research SUMMARY.md. All v1 items 
 
 | REQ-ID | Phase |
 |--------|-------|
-| (pending roadmap) | — |
+| DIAG-01 | Phase 1 — Diagnose (Inspection & Power Path) |
+| DIAG-02 | Phase 1 — Diagnose (Inspection & Power Path) |
+| FLASH-01 | Phase 2 — MCU Bring-up & Reflash |
+| FLASH-02 | Phase 2 — MCU Bring-up & Reflash |
+| FLASH-03 | Phase 2 — MCU Bring-up & Reflash |
+| TOOL-01 | Phase 2 — MCU Bring-up & Reflash |
+| GPS-01 | Phase 3 — Non-RF Peripherals (GPS & BMP180) |
+| GPS-02 | Phase 3 — Non-RF Peripherals (GPS & BMP180) |
+| SENS-01 | Phase 3 — Non-RF Peripherals (GPS & BMP180) |
+| RF-01 | Phase 4 — RF Path & SDR End-to-End Validation |
+| RF-02 | Phase 4 — RF Path & SDR End-to-End Validation |
+| TOOL-02 | Phase 4 — RF Path & SDR End-to-End Validation |
+| VALID-01 | Phase 4 — RF Path & SDR End-to-End Validation |
