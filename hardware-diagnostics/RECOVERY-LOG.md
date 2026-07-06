@@ -124,8 +124,10 @@ Summary (full detail in `notes.md`):
 
 | # | Measurement | Expected | Measured | Pass? |
 |---|-------------|----------|----------|-------|
-| 1 | VBAT → GND resistance | High (kΩ+, may climb as caps charge). **~0 Ω = short → STOP** | _____ | ⬜ |
-| 2 | 3V3 → GND resistance | High / climbing toward kΩ+. **~0 Ω = short → STOP** | _____ | ⬜ |
+| 1 | VBAT → GND resistance | ⚠️ **Supercaps** make this read LOW then climb slowly as they charge — that's normal, not a short. A *persistent* ~0 Ω that **never climbs** = short → STOP | _____ | ⬜ |
+| 2 | 3V3 → GND resistance | Climbs toward kΩ+ as smaller caps charge. Persistent ~0 Ω (no climb) = short → STOP | _____ | ⬜ |
+
+> **Reading resistance across charged capacitors:** a DMM sources a tiny current; big caps (esp. the supercaps on VBAT) soak it up and the displayed resistance *rises* as they charge. Judge by the **trend**, not the first number — a real short is flat at ~0 Ω; a healthy rail starts low and keeps climbing. Discharge caps between retries for a consistent read.
 | 3 | GPS feed joint (probe antenna base ↔ its pad, **wiggle antenna**) | Steady low/continuity; **intermittent/jumpy = cracked/corroded joint** | _____ | ⬜ |
 
 **B. Powered checks — only if #1 and #2 are both HIGH (no short).** Plug in USB, meter on DC V.

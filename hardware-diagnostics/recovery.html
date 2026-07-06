@@ -298,8 +298,8 @@ const DATA = {
           {t:"todo",x:"<b>Back side not yet photographed</b> — add to photos/ to extend inspection."}
         ]},
         { type:"measure", title:"DIAG-02A · Cold checks", sub:"power OFF · USB unplugged · caps discharged · meter on Ω", rows:[
-          {id:"vbat-gnd", label:"VBAT → GND resistance", exp:"High (kΩ+, may climb). ~0 Ω = short → STOP"},
-          {id:"3v3-gnd",  label:"3V3 → GND resistance",  exp:"High / climbing to kΩ+. ~0 Ω = short → STOP"},
+          {id:"vbat-gnd", label:"VBAT → GND resistance", exp:"⚠ Supercaps read LOW then climb as they charge — normal. Persistent ~0 Ω that never climbs = short → STOP"},
+          {id:"3v3-gnd",  label:"3V3 → GND resistance",  exp:"Climbs to kΩ+ as caps charge. Persistent ~0 Ω (no climb) = short → STOP"},
           {id:"gps-joint",label:"GPS feed joint (wiggle antenna)", exp:"Steady continuity; jumpy = cracked/corroded"}
         ]},
         { type:"measure", title:"DIAG-02B · Powered checks", sub:"ONLY if A shows no short · plug USB · meter on DC V", rows:[
