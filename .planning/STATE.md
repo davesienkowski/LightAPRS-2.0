@@ -76,6 +76,12 @@ Items acknowledged and carried forward from previous milestone close:
 |----------|------|--------|-------------|
 | *(none)* | | | |
 
+## Quick Tasks Completed
+
+| Date | Task | Result |
+|------|------|--------|
+| 2026-07-06 | [260706-0u2] Review recovery.html for incorrect/misleading content | Fixed misleading `Core value — "done"` label → `definition of "done"`; verified rest of dashboard faithful to RECOVERY-LOG.md. 2 findings flagged for user (DIAG-01 pass status; dashboard/STATE divergence). |
+
 ## Session Continuity
 
 Last session: 2026-07-05
